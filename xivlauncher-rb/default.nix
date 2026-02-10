@@ -19,7 +19,7 @@
 }:
 
 let
-  tag = "1.1.2.1";
+  tag = "1.3.1.2";
 in
 buildDotnetModule rec {
   pname = "xivlauncher-rb";
