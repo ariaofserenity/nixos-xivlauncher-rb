@@ -59,11 +59,6 @@ buildDotnetModule rec {
     "-p:PublishSingleFile=false"
   ];
 
-  postPatch = ''
-    substituteInPlace lib/FFXIVQuickLauncher/src/XIVLauncher.Common/Game/Patch/Acquisition/Aria/AriaHttpPatchAcquisition.cs \
-      --replace-fail 'ariaPath = "aria2c"' 'ariaPath = "${aria2}/bin/aria2c"'
-  '';
-
   postInstall = ''
     mkdir -p $out/share/pixmaps
     cp src/XIVLauncher.Core/Resources/logo.png $out/share/pixmaps/xivlauncher.png
