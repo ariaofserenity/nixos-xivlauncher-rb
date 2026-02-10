@@ -1,10 +1,8 @@
 name: Update
-
 on:
   schedule:
     - cron: '0 12 * * *'
   workflow_dispatch:
-
 jobs:
   update:
     name: XIVLauncher-RB Update
@@ -15,23 +13,40 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
-
       - uses: DeterminateSystems/nix-installer-action@v16
         with:
           source-url: https://install.lix.systems/lix/lix-installer-x86_64-linux
           diagnostic-endpoint: ""
-
       - name: Configure git
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email 'github-actions[bot]@users.noreply.github.com'
-
       - run: |
           mkdir -p ~/.config/nixpkgs
           echo "{ allowUnfree = true; }" > ~/.config/nixpkgs/config.nix
-
-      - run: nix run github:Mic92/nix-update -- xivlauncher-rb --flake --version-regex 'rb-v(.*)'
-
+      
+      - name: Update package version
+        run: nix run github:Mic92/nix-update -- xivlauncher-rb --flake --version-regex 'rb-v(.*)'
+      
+      - name: Regenerate deps.json
+        run: |
+          nix build .#xivlauncher-rb.passthru.fetch-deps --out-link fetch-deps
+          # Find the deps.json file (adjust path if it's in a subdirectory)
+          DEPS_JSON=$(find . -name "deps.json" -path "*/xivlauncher-rb/*" | head -n1)
+          if [ -z "$DEPS_JSON" ]; then
+            # Fallback: assume it's in pkgs/xivlauncher-rb/
+            DEPS_JSON="pkgs/xivlauncher-rb/deps.json"
+          fi
+          ./fetch-deps "$DEPS_JSON"
+          rm fetch-deps
+      
+      - name: Commit all changes
+        run: |
+          git add .
+          if ! git diff --staged --quiet; then
+            git commit -m "pkgs: update xivlauncher-rb"
+          fi
+      
       - id: create-pr
         uses: peter-evans/create-pull-request@v7
         with:
@@ -44,7 +59,7 @@ jobs:
           labels: 'dependencies'
           body: |
             Automated bump of XIVLauncher-RB
-
+      
       - uses: benc-uk/workflow-dispatch@v1
         if: ${{ contains(fromJSON('["created", "updated"]'), steps.create-pr.outputs.pull-request-operation) }}
         with:
